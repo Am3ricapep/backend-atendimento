@@ -25,6 +25,36 @@ app.use('/api/conversas',                         conversasRoutes);
 app.use('/api/mensagens',                         mensagemRoutes);
 app.use('/api/whatsapp',                          whatsappRoutes);
 
+// Webhook interno — chamado pelo n8n para salvar mensagem + broadcast SSE
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'n8n-webhook-secret';
+app.post('/api/webhook/mensagem', async (req, res) => {
+  try {
+    if (req.headers['x-webhook-key'] !== WEBHOOK_SECRET) return res.status(401).end();
+    const { empresa_id, cliente_id, conteudo, de_cliente, de_ia } = req.body;
+    const { Mensagem } = require('./models');
+    const { broadcast } = require('./sse');
+    const msg = await Mensagem.create({ empresa_id, cliente_id, conteudo, de_cliente: !!de_cliente, de_ia: !!de_ia });
+    broadcast(empresa_id, { tipo: 'mensagem', mensagem: msg });
+    res.json({ ok: true, mensagem: msg });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Webhook — toggle ia_ativa por cliente (chamado pelo n8n ou dashboard)
+app.patch('/api/webhook/cliente/:id/ia', async (req, res) => {
+  try {
+    if (req.headers['x-webhook-key'] !== WEBHOOK_SECRET) return res.status(401).end();
+    const { Cliente } = require('./models');
+    const cliente = await Cliente.findByPk(req.params.id);
+    if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
+    await cliente.update({ ia_ativa: req.body.ia_ativa });
+    res.json({ ok: true, ia_ativa: cliente.ia_ativa });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Export CSV
 app.get('/api/empresas/:slug/export.csv', require('./middleware/auth'), async (req, res) => {
   try {

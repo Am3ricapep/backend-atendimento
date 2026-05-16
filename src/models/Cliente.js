@@ -11,6 +11,9 @@ const Cliente = sequelize.define('Cliente', {
   produto_indicado:{ type: DataTypes.TEXT },
   conversation_id: { type: DataTypes.TEXT },
   contexto_humano: { type: DataTypes.TEXT, defaultValue: '' },
+  ia_ativa:        { type: DataTypes.BOOLEAN, defaultValue: true },
+  resumo_conversa: { type: DataTypes.TEXT },
+  data_entrada:    { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   ultima_interacao:{ type: DataTypes.DATE, defaultValue: DataTypes.NOW }
 }, {
   tableName: 'clientes',

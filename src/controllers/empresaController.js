@@ -1,4 +1,17 @@
+const axios = require('axios');
 const { Empresa, Cliente } = require('../models');
+
+const EVO_URL = process.env.EVOLUTION_URL;
+const EVO_KEY = process.env.EVOLUTION_KEY;
+
+async function criarInstanciaEvo(slug) {
+  try {
+    await axios.post(`${EVO_URL}/instance/create`,
+      { instanceName: slug, integration: 'WHATSAPP-BAILEYS', qrcode: true },
+      { headers: { apikey: EVO_KEY } }
+    );
+  } catch {} // ignora se já existe
+}
 
 const isAdmin = (req) => req.empresa.role === 'admin';
 const owns    = (req, empresa) => empresa.id === req.empresa.empresaId;
@@ -28,6 +41,7 @@ const criar = async (req, res) => {
   try {
     if (!isAdmin(req)) return res.status(403).json({ error: 'Apenas admin pode criar empresas' });
     const empresa = await Empresa.create(req.body);
+    await criarInstanciaEvo(empresa.slug);
     res.status(201).json(empresa);
   } catch (e) {
     res.status(500).json({ error: e.message });
