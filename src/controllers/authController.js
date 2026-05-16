@@ -7,9 +7,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 const login = async (req, res) => {
   try {
     const { slug, senha } = req.body;
-    if (!slug || !senha) return res.status(400).json({ error: 'slug e senha obrigatórios' });
+    if (!slug || !senha) return res.status(400).json({ error: 'email e senha obrigatórios' });
 
-    const empresa = await Empresa.findOne({ where: { slug, ativo: true } });
+    const { Op } = require('sequelize');
+    const empresa = await Empresa.findOne({
+      where: { ativo: true, [Op.or]: [{ slug }, { email: slug }] }
+    });
     if (!empresa) return res.status(401).json({ error: 'Credenciais inválidas' });
 
     const ok = await bcrypt.compare(senha, empresa.senha_hash || '');
@@ -57,6 +60,7 @@ const setup = async (req, res) => {
     if (!senha) return res.status(400).json({ error: 'senha obrigatória' });
 
     // Garante que as colunas existem
+    await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS email TEXT`);
     await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha_hash TEXT`);
     await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'empresa'`);
 
@@ -65,8 +69,13 @@ const setup = async (req, res) => {
 
     const hash = await bcrypt.hash(senha, 10);
     await sequelize.query(
-      `INSERT INTO empresas (slug, nome, role, ativo, senha_hash) VALUES ('admin', 'Admin Geral', 'admin', true, :hash)`,
+      `INSERT INTO empresas (slug, nome, email, role, ativo, senha_hash) VALUES ('admin', 'Admin Geral', 'makush42@proton.me', 'admin', true, :hash)`,
       { replacements: { hash } }
+    );
+
+    // Atualiza email se o admin já existia sem email
+    await sequelize.query(
+      `UPDATE empresas SET email = 'makush42@proton.me' WHERE slug = 'admin' AND (email IS NULL OR email = '')`
     );
 
     res.status(201).json({ ok: true, slug: 'admin' });
