@@ -10,6 +10,7 @@ async function start() {
     await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS email TEXT`);
     await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha_hash TEXT`);
     await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'empresa'`);
+    await sequelize.query(`UPDATE empresas SET email = 'makush42@proton.me' WHERE slug = 'admin' AND email IS NULL`);
     console.log('Postgres conectado');
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
   } catch (e) {
