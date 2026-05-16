@@ -5,7 +5,7 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
   host: process.env.DB_HOST,
   port: process.env.DB_PORT || 5432,
   dialect: 'postgres',
-  dialectOptions: { ssl: { require: false, rejectUnauthorized: false } },
+  dialectOptions: { ssl: false },
   logging: false,
   pool: { max: 5, min: 0, acquire: 30000, idle: 10000 }
 });
