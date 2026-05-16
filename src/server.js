@@ -12,6 +12,7 @@ async function start() {
     await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha_hash TEXT`);
     await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'empresa'`);
     await sequelize.query(`UPDATE empresas SET email = 'makush42@proton.me' WHERE slug = 'admin' AND email IS NULL`);
+    await sequelize.query(`UPDATE empresas SET evolution_instance = 'ATENDENTE' WHERE slug = 'america-peptideos' AND evolution_instance IS NULL`);
     // clientes
     await sequelize.query(`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS empresa_id INTEGER`);
     await sequelize.query(`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS resumo_conversa TEXT`);
