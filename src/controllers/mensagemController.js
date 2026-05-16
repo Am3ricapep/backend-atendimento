@@ -56,7 +56,7 @@ const enviarMensagem = async (req, res) => {
 
     // Notificar SSE
     const { broadcast } = require('../sse');
-    broadcast(cliente.empresa_id, { tipo: 'nova_mensagem', clienteId: cliente.id, msg });
+    broadcast(cliente.empresa_id, { tipo: 'mensagem', mensagem: msg });
 
     res.status(201).json(msg);
   } catch (e) { res.status(500).json({ error: e.message }); }

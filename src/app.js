@@ -17,6 +17,28 @@ app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ ok: true, ts: new Date() }));
 
+// Endpoint temporario para rodar migrations manualmente via browser
+app.get('/api/migrate', async (req, res) => {
+  if (req.query.key !== (process.env.WEBHOOK_SECRET || 'n8n-webhook-secret')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { sequelize } = require('./models');
+  const results = [];
+  const q = async (sql) => {
+    try { await sequelize.query(sql); results.push({ ok: true, sql: sql.slice(0, 60) }); }
+    catch (e) { results.push({ ok: false, sql: sql.slice(0, 60), error: e.message }); }
+  };
+  await q('ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS empresa_id INTEGER');
+  await q('ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS de_cliente BOOLEAN DEFAULT false');
+  await q('ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS de_ia BOOLEAN DEFAULT false');
+  await q('ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS atendente_id INTEGER');
+  await q('ALTER TABLE clientes ADD COLUMN IF NOT EXISTS ia_ativa BOOLEAN DEFAULT true');
+  await q('ALTER TABLE clientes ADD COLUMN IF NOT EXISTS resumo_conversa TEXT');
+  await q('ALTER TABLE clientes ADD COLUMN IF NOT EXISTS data_entrada TIMESTAMPTZ DEFAULT NOW()');
+  await q('CREATE UNIQUE INDEX IF NOT EXISTS clientes_empresa_phone_idx ON clientes(empresa_id, phone)');
+  res.json({ done: true, results });
+});
+
 app.use('/api/auth',                              authRoutes);
 app.use('/api/empresas',                          empresasRoutes);
 app.use('/api/empresas/:empresaId/atendentes',    atendenteRoutes);
