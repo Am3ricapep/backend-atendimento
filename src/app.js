@@ -49,6 +49,10 @@ app.get('/api/migrate', async (req, res) => {
   await q('ALTER TABLE clientes ADD COLUMN IF NOT EXISTS resumo_conversa TEXT');
   await q('ALTER TABLE clientes ADD COLUMN IF NOT EXISTS data_entrada TIMESTAMPTZ DEFAULT NOW()');
   await q('CREATE UNIQUE INDEX IF NOT EXISTS clientes_empresa_phone_idx ON clientes(empresa_id, phone)');
+  // Colunas legadas do Chatwoot tinham NOT NULL — remover para compatibilidade
+  await q('ALTER TABLE mensagens ALTER COLUMN phone DROP NOT NULL');
+  await q('ALTER TABLE mensagens ALTER COLUMN role DROP NOT NULL');
+  await q('ALTER TABLE mensagens ALTER COLUMN content DROP NOT NULL');
 
   // Schema atualizado
   await q(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name='mensagens' ORDER BY ordinal_position`, 'schema:mensagens:depois');
