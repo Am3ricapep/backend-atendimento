@@ -48,6 +48,8 @@ async function start() {
         criado_em    TIMESTAMPTZ DEFAULT NOW()
       )
     `);
+    // mensagens — garante colunas que podem não existir em instâncias antigas
+    await sequelize.query(`ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS atendente_id INTEGER`);
     // produtos
     await sequelize.query(`
       CREATE TABLE IF NOT EXISTS produtos (
