@@ -103,4 +103,20 @@ const clientes = async (req, res) => {
   }
 };
 
-module.exports = { listar, buscar, criar, atualizar, toggleAtivo, deletar, clientes };
+const atualizarCliente = async (req, res) => {
+  try {
+    const empresa = await Empresa.findOne({ where: { slug: req.params.slug } });
+    if (!empresa) return res.status(404).json({ error: 'Empresa não encontrada' });
+    if (!isAdmin(req) && !owns(req, empresa)) return res.status(403).json({ error: 'Acesso negado' });
+    const cliente = await Cliente.findOne({ where: { id: req.params.clienteId, empresa_id: empresa.id } });
+    if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
+    const allowed = ['ia_ativa', 'estagio', 'objetivo', 'nome', 'produto_indicado'];
+    const body = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
+    await cliente.update(body);
+    res.json(cliente);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+module.exports = { listar, buscar, criar, atualizar, toggleAtivo, deletar, clientes, atualizarCliente };
