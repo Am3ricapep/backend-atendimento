@@ -16,6 +16,10 @@ async function start() {
     await sequelize.query(`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS empresa_id INTEGER`);
     await sequelize.query(`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS resumo_conversa TEXT`);
     await sequelize.query(`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS data_entrada TIMESTAMPTZ DEFAULT NOW()`);
+    await sequelize.query(`
+      UPDATE clientes SET empresa_id = (SELECT id FROM empresas WHERE slug = 'america-peptideos' LIMIT 1)
+      WHERE empresa_id IS NULL
+    `);
     console.log('Postgres conectado e migrações aplicadas');
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
   } catch (e) {
