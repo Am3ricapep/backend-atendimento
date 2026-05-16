@@ -6,6 +6,7 @@ const Empresa = sequelize.define('Empresa', {
   slug:               { type: DataTypes.TEXT, unique: true, allowNull: false },
   nome:               { type: DataTypes.TEXT, allowNull: false },
   senha_hash:         { type: DataTypes.TEXT },
+  role:               { type: DataTypes.TEXT, defaultValue: 'empresa' }, // 'empresa' | 'admin'
   atendente:          { type: DataTypes.TEXT, defaultValue: 'Ana' },
   checkout_url:       { type: DataTypes.TEXT },
   evolution_instance: { type: DataTypes.TEXT },

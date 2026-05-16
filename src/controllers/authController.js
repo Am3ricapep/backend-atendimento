@@ -16,12 +16,16 @@ const login = async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
 
     const token = jwt.sign(
-      { empresaId: empresa.id, slug: empresa.slug, nome: empresa.nome },
+      { empresaId: empresa.id, slug: empresa.slug, nome: empresa.nome, role: empresa.role },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.json({ token, empresa: { id: empresa.id, slug: empresa.slug, nome: empresa.nome, atendente: empresa.atendente } });
+    res.json({
+      token,
+      role: empresa.role,
+      empresa: { id: empresa.id, slug: empresa.slug, nome: empresa.nome, atendente: empresa.atendente, role: empresa.role },
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
