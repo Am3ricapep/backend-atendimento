@@ -48,25 +48,28 @@ const setSenha = async (req, res) => {
   }
 };
 
+const sequelize = require('../config/database');
+
 // Cria o admin inicial — só funciona se ainda não existe nenhum admin
 const setup = async (req, res) => {
   try {
     const { senha } = req.body;
     if (!senha) return res.status(400).json({ error: 'senha obrigatória' });
 
-    const existe = await Empresa.findOne({ where: { role: 'admin' } });
-    if (existe) return res.status(409).json({ error: 'Admin já existe' });
+    // Garante que as colunas existem
+    await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha_hash TEXT`);
+    await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'empresa'`);
+
+    const [rows] = await sequelize.query(`SELECT id FROM empresas WHERE role = 'admin' LIMIT 1`);
+    if (rows.length) return res.status(409).json({ error: 'Admin já existe' });
 
     const hash = await bcrypt.hash(senha, 10);
-    const admin = await Empresa.create({
-      slug: 'admin',
-      nome: 'Admin Geral',
-      role: 'admin',
-      ativo: true,
-      senha_hash: hash,
-    });
+    await sequelize.query(
+      `INSERT INTO empresas (slug, nome, role, ativo, senha_hash) VALUES ('admin', 'Admin Geral', 'admin', true, :hash)`,
+      { replacements: { hash } }
+    );
 
-    res.status(201).json({ ok: true, slug: admin.slug });
+    res.status(201).json({ ok: true, slug: 'admin' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
