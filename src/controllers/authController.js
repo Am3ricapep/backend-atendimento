@@ -48,4 +48,28 @@ const setSenha = async (req, res) => {
   }
 };
 
-module.exports = { login, setSenha };
+// Cria o admin inicial — só funciona se ainda não existe nenhum admin
+const setup = async (req, res) => {
+  try {
+    const { senha } = req.body;
+    if (!senha) return res.status(400).json({ error: 'senha obrigatória' });
+
+    const existe = await Empresa.findOne({ where: { role: 'admin' } });
+    if (existe) return res.status(409).json({ error: 'Admin já existe' });
+
+    const hash = await bcrypt.hash(senha, 10);
+    const admin = await Empresa.create({
+      slug: 'admin',
+      nome: 'Admin Geral',
+      role: 'admin',
+      ativo: true,
+      senha_hash: hash,
+    });
+
+    res.status(201).json({ ok: true, slug: admin.slug });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+module.exports = { login, setSenha, setup };
