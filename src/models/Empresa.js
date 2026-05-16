@@ -5,6 +5,7 @@ const Empresa = sequelize.define('Empresa', {
   id:                 { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   slug:               { type: DataTypes.TEXT, unique: true, allowNull: false },
   nome:               { type: DataTypes.TEXT, allowNull: false },
+  senha_hash:         { type: DataTypes.TEXT },
   atendente:          { type: DataTypes.TEXT, defaultValue: 'Ana' },
   checkout_url:       { type: DataTypes.TEXT },
   evolution_instance: { type: DataTypes.TEXT },
