@@ -27,7 +27,14 @@ const login = async (req, res) => {
     res.json({
       token,
       role: empresa.role,
-      empresa: { id: empresa.id, slug: empresa.slug, nome: empresa.nome, atendente: empresa.atendente, role: empresa.role },
+      empresa: {
+        id: empresa.id,
+        slug: empresa.slug,
+        nome: empresa.nome,
+        atendente: empresa.atendente,
+        role: empresa.role,
+        evolution_instance: empresa.evolution_instance || '',
+      },
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
