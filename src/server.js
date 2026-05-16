@@ -49,6 +49,9 @@ async function start() {
       )
     `);
     // mensagens — garante colunas que podem não existir em instâncias antigas
+    await sequelize.query(`ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS empresa_id INTEGER`);
+    await sequelize.query(`ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS de_cliente BOOLEAN DEFAULT false`);
+    await sequelize.query(`ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS de_ia BOOLEAN DEFAULT false`);
     await sequelize.query(`ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS atendente_id INTEGER`);
     // produtos
     await sequelize.query(`
