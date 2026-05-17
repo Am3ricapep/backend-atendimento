@@ -261,4 +261,15 @@ const buscarMidia = async (req, res) => {
   }
 };
 
-module.exports = { listarPorCliente, enviarMensagem, enviarMidia, buscarMidia };
+const deletarChat = async (req, res) => {
+  try {
+    const cliente = await Cliente.findByPk(req.params.clienteId);
+    if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
+    if (!temAcesso(req, cliente.empresa_id)) return res.status(403).json({ error: 'Acesso negado' });
+
+    await Mensagem.destroy({ where: { cliente_id: cliente.id } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+module.exports = { listarPorCliente, enviarMensagem, enviarMidia, buscarMidia, deletarChat };

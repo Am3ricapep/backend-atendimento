@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const auth = require('../middleware/auth');
-const { listarPorCliente, enviarMensagem, enviarMidia, buscarMidia } = require('../controllers/mensagemController');
+const { listarPorCliente, enviarMensagem, enviarMidia, buscarMidia, deletarChat } = require('../controllers/mensagemController');
 const { addClient, removeClient } = require('../sse');
 const jwt = require('jsonwebtoken');
 
@@ -17,6 +17,9 @@ router.post('/:clienteId/midia', auth, enviarMidia);
 
 // POST /api/mensagens/midia/buscar — retorna base64 de mídia via Evolution
 router.post('/midia/buscar', auth, buscarMidia);
+
+// DELETE /api/mensagens/:clienteId — apaga histórico do chat
+router.delete('/:clienteId', auth, deletarChat);
 
 // SSE — GET /api/mensagens/eventos/stream?token=...
 router.get('/eventos/stream', (req, res) => {
