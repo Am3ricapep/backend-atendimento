@@ -53,6 +53,7 @@ app.get('/api/migrate', async (req, res) => {
   await q('ALTER TABLE mensagens ALTER COLUMN phone DROP NOT NULL');
   await q('ALTER TABLE mensagens ALTER COLUMN role DROP NOT NULL');
   await q('ALTER TABLE mensagens ALTER COLUMN content DROP NOT NULL');
+  await q('ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS evolution_msg TEXT');
 
   // Schema atualizado
   await q(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name='mensagens' ORDER BY ordinal_position`, 'schema:mensagens:depois');

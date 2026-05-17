@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const auth = require('../middleware/auth');
-const { listarPorCliente, enviarMensagem, enviarMidia } = require('../controllers/mensagemController');
+const { listarPorCliente, enviarMensagem, enviarMidia, buscarMidia } = require('../controllers/mensagemController');
 const { addClient, removeClient } = require('../sse');
 const jwt = require('jsonwebtoken');
 
@@ -15,7 +15,10 @@ router.post('/:clienteId', auth, enviarMensagem);
 // POST /api/mensagens/:clienteId/midia
 router.post('/:clienteId/midia', auth, enviarMidia);
 
-// SSE — GET /api/mensagens/eventos?token=...
+// POST /api/mensagens/midia/buscar — retorna base64 de mídia via Evolution
+router.post('/midia/buscar', auth, buscarMidia);
+
+// SSE — GET /api/mensagens/eventos/stream?token=...
 router.get('/eventos/stream', (req, res) => {
   try {
     const token = req.query.token;
