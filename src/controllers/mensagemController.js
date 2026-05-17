@@ -184,18 +184,19 @@ const enviarMidia = async (req, res) => {
     });
 
     if (empresa?.evolution_instance && cliente.phone) {
-      await axios.post(
-        `${EVO_URL}/message/sendMedia/${empresa.evolution_instance}`,
-        {
-          number:    cliente.phone,
-          mediatype,
-          mimetype,
-          caption:   caption || '',
-          fileName,
-          media:     base64,
-        },
-        { headers: { apikey: EVO_KEY } }
-      ).catch(() => {});
+      if (mediatype === 'audio') {
+        await axios.post(
+          `${EVO_URL}/message/sendWhatsAppAudio/${empresa.evolution_instance}`,
+          { number: cliente.phone, audio: base64, encoding: true },
+          { headers: { apikey: EVO_KEY } }
+        ).catch(e => console.error('[sendWhatsAppAudio]', e?.response?.data || e?.message));
+      } else {
+        await axios.post(
+          `${EVO_URL}/message/sendMedia/${empresa.evolution_instance}`,
+          { number: cliente.phone, mediatype, mimetype, caption: caption || '', fileName, media: base64 },
+          { headers: { apikey: EVO_KEY } }
+        ).catch(e => console.error('[sendMedia]', e?.response?.data || e?.message));
+      }
     }
 
     const { broadcast } = require('../sse');
