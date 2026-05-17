@@ -1,4 +1,4 @@
-const { Mensagem, Cliente, Atendente, Empresa } = require('../models');
+const { Mensagem, Cliente, Atendente, Empresa, sequelize } = require('../models');
 const axios = require('axios');
 
 const EVO_URL = process.env.EVOLUTION_URL;
@@ -81,39 +81,30 @@ const listarPorCliente = async (req, res) => {
     if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
     if (!temAcesso(req, cliente.empresa_id)) return res.status(403).json({ error: 'Acesso negado' });
 
-    // Tenta incluir evolution_msg; se a coluna ainda não existir no banco (migration pendente),
-    // cai no fallback sem ela para não quebrar o histórico.
-    let msgs, empresa;
+    const [msgs, empresa] = await Promise.all([
+      Mensagem.findAll({
+        where: { cliente_id: cliente.id },
+        include: [{ model: Atendente, attributes: ['nome'], required: false }],
+        order: [['criado_em', 'ASC']],
+        limit: 200,
+      }),
+      Empresa.findByPk(cliente.empresa_id),
+    ]);
+
+    // Lê evolution_msg via raw SQL (coluna opcional — não está no model para evitar quebrar RETURNING)
+    let evolutionMsgMap = {};
     try {
-      [msgs, empresa] = await Promise.all([
-        Mensagem.findAll({
-          where: { cliente_id: cliente.id },
-          include: [{ model: Atendente, attributes: ['nome'], required: false }],
-          order: [['criado_em', 'ASC']],
-          limit: 200,
-        }),
-        Empresa.findByPk(cliente.empresa_id),
-      ]);
-    } catch (dbErr) {
-      if (String(dbErr.message).includes('evolution_msg')) {
-        // Migration ainda não rodou — busca sem a coluna nova
-        [msgs, empresa] = await Promise.all([
-          Mensagem.findAll({
-            attributes: { exclude: ['evolution_msg'] },
-            where: { cliente_id: cliente.id },
-            include: [{ model: Atendente, attributes: ['nome'], required: false }],
-            order: [['criado_em', 'ASC']],
-            limit: 200,
-          }),
-          Empresa.findByPk(cliente.empresa_id),
-        ]);
-      } else throw dbErr;
-    }
+      const [rows] = await sequelize.query(
+        'SELECT id, evolution_msg FROM mensagens WHERE cliente_id = :clienteId AND evolution_msg IS NOT NULL',
+        { replacements: { clienteId: cliente.id }, type: sequelize.QueryTypes.SELECT }
+      );
+      if (Array.isArray(rows)) rows.forEach(r => { if (r.evolution_msg) evolutionMsgMap[r.id] = r.evolution_msg; });
+      else if (rows?.id) evolutionMsgMap[rows.id] = rows.evolution_msg;
+    } catch { /* coluna ainda não existe — ignora */ }
 
     let resultado = msgs.map(m => {
       const json = m.toJSON();
-      // Se mensagem de mídia tiver evolution_msg armazenado, expõe para o frontend
-      if (json.evolution_msg) json._evolution_msg = json.evolution_msg;
+      if (evolutionMsgMap[json.id]) json._evolution_msg = evolutionMsgMap[json.id];
       return json;
     });
 
@@ -227,10 +218,13 @@ const enviarMidia = async (req, res) => {
             { headers: { apikey: EVO_KEY } }
           );
         }
-        // Evolution retorna { key, message } — guarda para poder buscar mídia depois
+        // Evolution retorna { key, message } — guarda via raw SQL (coluna opcional)
         if (evoResp?.data?.key && evoResp?.data?.message) {
           evolutionMsgJson = JSON.stringify({ key: evoResp.data.key, message: evoResp.data.message });
-          await msg.update({ evolution_msg: evolutionMsgJson });
+          await sequelize.query(
+            'UPDATE mensagens SET evolution_msg = :val WHERE id = :id',
+            { replacements: { val: evolutionMsgJson, id: msg.id } }
+          ).catch(() => {}); // silencioso se coluna não existir ainda
         }
       } catch (e) {
         console.error('[enviarMidia evo]', e?.response?.data || e?.message);

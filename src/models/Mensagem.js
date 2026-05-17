@@ -10,7 +10,6 @@ const Mensagem = sequelize.define('Mensagem', {
   de_ia:         { type: DataTypes.BOOLEAN, defaultValue: false },
   atendente_id:  { type: DataTypes.INTEGER },
   criado_em:     { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-  evolution_msg: { type: DataTypes.TEXT, allowNull: true }, // JSON {key,message} do Evolution para fetch de mídia
 }, {
   tableName: 'mensagens',
   timestamps: false
