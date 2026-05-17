@@ -119,4 +119,22 @@ const atualizarCliente = async (req, res) => {
   }
 };
 
-module.exports = { listar, buscar, criar, atualizar, toggleAtivo, deletar, clientes, atualizarCliente };
+const deletarCliente = async (req, res) => {
+  try {
+    const empresa = await Empresa.findOne({ where: { slug: req.params.slug } });
+    if (!empresa) return res.status(404).json({ error: 'Empresa não encontrada' });
+    if (!isAdmin(req) && !owns(req, empresa)) return res.status(403).json({ error: 'Acesso negado' });
+    const cliente = await Cliente.findOne({ where: { id: req.params.clienteId, empresa_id: empresa.id } });
+    if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
+
+    const { Mensagem } = require('../models');
+    await Mensagem.destroy({ where: { cliente_id: cliente.id } });
+    await cliente.destroy();
+
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+module.exports = { listar, buscar, criar, atualizar, toggleAtivo, deletar, clientes, atualizarCliente, deletarCliente };
