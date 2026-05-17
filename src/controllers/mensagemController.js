@@ -81,15 +81,34 @@ const listarPorCliente = async (req, res) => {
     if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
     if (!temAcesso(req, cliente.empresa_id)) return res.status(403).json({ error: 'Acesso negado' });
 
-    const [msgs, empresa] = await Promise.all([
-      Mensagem.findAll({
-        where: { cliente_id: cliente.id },
-        include: [{ model: Atendente, attributes: ['nome'], required: false }],
-        order: [['criado_em', 'ASC']],
-        limit: 200,
-      }),
-      Empresa.findByPk(cliente.empresa_id),
-    ]);
+    // Tenta incluir evolution_msg; se a coluna ainda não existir no banco (migration pendente),
+    // cai no fallback sem ela para não quebrar o histórico.
+    let msgs, empresa;
+    try {
+      [msgs, empresa] = await Promise.all([
+        Mensagem.findAll({
+          where: { cliente_id: cliente.id },
+          include: [{ model: Atendente, attributes: ['nome'], required: false }],
+          order: [['criado_em', 'ASC']],
+          limit: 200,
+        }),
+        Empresa.findByPk(cliente.empresa_id),
+      ]);
+    } catch (dbErr) {
+      if (String(dbErr.message).includes('evolution_msg')) {
+        // Migration ainda não rodou — busca sem a coluna nova
+        [msgs, empresa] = await Promise.all([
+          Mensagem.findAll({
+            attributes: { exclude: ['evolution_msg'] },
+            where: { cliente_id: cliente.id },
+            include: [{ model: Atendente, attributes: ['nome'], required: false }],
+            order: [['criado_em', 'ASC']],
+            limit: 200,
+          }),
+          Empresa.findByPk(cliente.empresa_id),
+        ]);
+      } else throw dbErr;
+    }
 
     let resultado = msgs.map(m => {
       const json = m.toJSON();
