@@ -63,6 +63,29 @@ app.get('/api/migrate', async (req, res) => {
   res.json({ done: true, results });
 });
 
+// Endpoint de diagnostico read-only: migrations aplicadas + amostra de produtos
+const WEBHOOK_KEY = process.env.WEBHOOK_SECRET || 'n8n-webhook-secret';
+app.get('/api/_debug/migrations', async (req, res) => {
+  if (req.query.key !== WEBHOOK_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  const { sequelize } = require('./models');
+  const out = {};
+  const safeSelect = async (sql, label) => {
+    try { const [rows] = await sequelize.query(sql); out[label] = rows; }
+    catch (e) { out[label] = { error: e.message }; }
+  };
+  await safeSelect(`SELECT nome, aplicada_em FROM _migrations ORDER BY aplicada_em`, 'migrations');
+  await safeSelect(`SELECT id, slug, nome FROM empresas ORDER BY id`, 'empresas');
+  await safeSelect(
+    `SELECT p.id, e.slug AS empresa, p.nome, LEFT(p.indicacao, 80) AS indicacao_prev, p.dose, p.protocolo
+     FROM produtos p
+     JOIN empresas e ON e.id = p.empresa_id
+     WHERE e.slug IN ('america-peptideos', 'imperio')
+     ORDER BY e.slug, p.ordem`,
+    'produtos_america_imperio'
+  );
+  res.json(out);
+});
+
 app.use('/api/auth',                              authRoutes);
 app.use('/api/empresas',                          empresasRoutes);
 app.use('/api/empresas/:empresaId/atendentes',    atendenteRoutes);
