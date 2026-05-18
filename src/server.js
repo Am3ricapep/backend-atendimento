@@ -183,7 +183,37 @@ async function start() {
         console.log(`[${MIG_V2}] ${emp.slug}: produtos atualizados (dose + protocolo + scripts limpos)`);
       }
       await sequelize.query(`INSERT INTO _migrations (nome) VALUES (:nome)`, { replacements: { nome: MIG_V2 } });
-      console.log(`[${MIG_V2}] aplicada — ${totalAtualizados} linhas atualizadas`);
+      console.log(`[${MIG_V2}] aplicada, ${totalAtualizados} linhas atualizadas`);
+    }
+
+    // Migration v3: corrige Imperio (slug 'Imperio' com I maiusculo) que escapou das v1 e v2
+    // V1 e v2 usavam slug IN (...) case-sensitive; usa LOWER aqui para pegar qualquer variacao
+    const MIG_V3 = 'produtos_seed_v3_imperio_case_insensitive_2026_05_18';
+    const [v3Rodou] = await sequelize.query(
+      `SELECT 1 FROM _migrations WHERE nome = :nome`,
+      { replacements: { nome: MIG_V3 } }
+    );
+    if (v3Rodou.length === 0) {
+      const [imperioRows] = await sequelize.query(
+        `SELECT id, slug FROM empresas WHERE LOWER(slug) = 'imperio' LIMIT 1`
+      );
+      if (imperioRows.length > 0) {
+        const empId = imperioRows[0].id;
+        // Backup defensivo (cria tabela se nao existir, mesma da v1)
+        await sequelize.query(`CREATE TABLE IF NOT EXISTS produtos_backup_pre_seed_v1 (LIKE produtos)`);
+        await sequelize.query(
+          `INSERT INTO produtos_backup_pre_seed_v1
+           SELECT * FROM produtos WHERE empresa_id = :id`,
+          { replacements: { id: empId } }
+        );
+        // Reset
+        await sequelize.query(`DELETE FROM produtos WHERE empresa_id = :id`, { replacements: { id: empId } });
+        const dados = PRODUTOS_PADRAO.map(p => ({ ...p, empresa_id: empId, ativo: true }));
+        await Produto.bulkCreate(dados);
+        console.log(`[${MIG_V3}] ${imperioRows[0].slug}: produtos resetados (${dados.length} produtos da seed v2)`);
+      }
+      await sequelize.query(`INSERT INTO _migrations (nome) VALUES (:nome)`, { replacements: { nome: MIG_V3 } });
+      console.log(`[${MIG_V3}] aplicada`);
     }
 
     console.log('Postgres conectado e migrações aplicadas');

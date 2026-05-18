@@ -87,9 +87,12 @@ const N8N_WORKFLOW_ID = '1GNR61bxHJJhyvqp';
 const criar = async (req, res) => {
   try {
     if (!isAdmin(req)) return res.status(403).json({ error: 'Apenas admin pode criar empresas' });
+    // Slug sempre lowercase (login, queries, n8n matching) — evita problema de case-sensitivity
+    const slug = (req.body.slug || '').toLowerCase().trim();
     const body = {
       ...req.body,
-      evolution_instance: req.body.evolution_instance || req.body.slug,
+      slug,
+      evolution_instance: req.body.evolution_instance || slug,
       n8n_workflow_id:    req.body.n8n_workflow_id    || N8N_WORKFLOW_ID,
       prompt:             req.body.prompt             || PROMPT_PADRAO,
     };

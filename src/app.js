@@ -79,7 +79,7 @@ app.get('/api/_debug/migrations', async (req, res) => {
     `SELECT p.id, e.slug AS empresa, p.nome, LEFT(p.indicacao, 80) AS indicacao_prev, p.dose, p.protocolo
      FROM produtos p
      JOIN empresas e ON e.id = p.empresa_id
-     WHERE e.slug IN ('america-peptideos', 'imperio')
+     WHERE LOWER(e.slug) IN ('america-peptideos', 'imperio')
      ORDER BY e.slug, p.ordem`,
     'produtos_america_imperio'
   );
