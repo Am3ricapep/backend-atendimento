@@ -13,20 +13,34 @@ async function criarInstanciaEvo(slug) {
       { instanceName: slug, integration: 'WHATSAPP-BAILEYS', qrcode: true },
       { headers: { apikey: EVO_KEY } }
     );
-  } catch {} // ignora se já existe
+  } catch {} // ignora se já existe (idempotente)
 
-  // Configura webhook apontando para o n8n
-  try {
-    await axios.post(`${EVO_URL}/webhook/set/${slug}`,
-      {
-        url: N8N_WEBHOOK_URL,
-        webhook_by_events: false,
-        webhook_base64: false,
-        events: ['MESSAGES_UPSERT'],
-      },
-      { headers: { apikey: EVO_KEY } }
-    );
-  } catch {} // ignora se instância ainda não está pronta
+  // Configura webhook apontando para o n8n (schema novo da Evolution API: body aninhado em "webhook")
+  // Retry porque a instância pode levar 1-2s para ficar pronta após o create
+  const webhookBody = {
+    webhook: {
+      url: N8N_WEBHOOK_URL,
+      enabled: true,
+      events: ['MESSAGES_UPSERT'],
+      webhookByEvents: false,
+      webhookBase64: false,
+    },
+  };
+  let webhookOk = false;
+  let ultimoErro = null;
+  for (let i = 0; i < 3 && !webhookOk; i++) {
+    try {
+      await axios.post(`${EVO_URL}/webhook/set/${slug}`, webhookBody, { headers: { apikey: EVO_KEY } });
+      webhookOk = true;
+    } catch (e) {
+      ultimoErro = e.response?.data || e.message;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  if (!webhookOk) {
+    console.error(`[criarInstanciaEvo] Falhou ao setar webhook em ${slug}:`, ultimoErro);
+  }
+  return { webhookOk };
 }
 
 const isAdmin = (req) => req.empresa.role === 'admin';
