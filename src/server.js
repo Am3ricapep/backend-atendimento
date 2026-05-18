@@ -92,6 +92,23 @@ async function start() {
       console.log(`Backfill prompt: ${empresasSemPrompt.length} empresas atualizadas`);
     }
 
+    // Backfill: empresas sem nenhum produto recebem a seed PRODUTOS_PADRAO
+    const { PRODUTOS_PADRAO } = require('./lib/produtosPadrao');
+    const { Produto } = require('./models');
+    const [empresasSemProdutos] = await sequelize.query(
+      `SELECT e.id, e.slug FROM empresas e
+       WHERE NOT EXISTS (SELECT 1 FROM produtos p WHERE p.empresa_id = e.id)`
+    );
+    for (const emp of empresasSemProdutos) {
+      const dados = PRODUTOS_PADRAO.map(p => ({ ...p, empresa_id: emp.id, ativo: true }));
+      try {
+        await Produto.bulkCreate(dados);
+        console.log(`Backfill produtos: empresa ${emp.slug} (${emp.id}) recebeu ${dados.length} produtos da seed`);
+      } catch (e) {
+        console.error(`Backfill produtos: falhou em ${emp.slug}:`, e.message);
+      }
+    }
+
     console.log('Postgres conectado e migrações aplicadas');
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
   } catch (e) {

@@ -1,6 +1,7 @@
 const axios = require('axios');
-const { Empresa, Cliente } = require('../models');
+const { Empresa, Cliente, Produto } = require('../models');
 const { PROMPT_PADRAO } = require('../lib/promptPadrao');
+const { PRODUTOS_PADRAO } = require('../lib/produtosPadrao');
 
 const EVO_URL = process.env.EVOLUTION_URL;
 const EVO_KEY = process.env.EVOLUTION_KEY;
@@ -43,6 +44,20 @@ async function criarInstanciaEvo(slug) {
   return { webhookOk };
 }
 
+// Insere a seed de produtos (PRODUTOS_PADRAO) para uma nova empresa.
+// Usado na criacao automatica e no backfill de empresas legadas sem produtos.
+async function criarProdutosPadrao(empresaId) {
+  try {
+    const dados = PRODUTOS_PADRAO.map(p => ({ ...p, empresa_id: empresaId, ativo: true }));
+    await Produto.bulkCreate(dados);
+    console.log(`[criarProdutosPadrao] empresa ${empresaId}: ${dados.length} produtos inseridos da seed`);
+    return dados.length;
+  } catch (e) {
+    console.error(`[criarProdutosPadrao] falhou para empresa ${empresaId}:`, e.message);
+    return 0;
+  }
+}
+
 const isAdmin = (req) => req.empresa.role === 'admin';
 const owns    = (req, empresa) => empresa.id === req.empresa.empresaId;
 
@@ -80,6 +95,7 @@ const criar = async (req, res) => {
     };
     const empresa = await Empresa.create(body);
     await criarInstanciaEvo(empresa.slug);
+    await criarProdutosPadrao(empresa.id);
     res.status(201).json(empresa);
   } catch (e) {
     res.status(500).json({ error: e.message });
