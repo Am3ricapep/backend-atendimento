@@ -50,9 +50,14 @@ const desconectar = async (req, res) => {
   try {
     const { instancia } = req.params;
     await evo.delete(`/instance/logout/${instancia}`);
-    res.json({ ok: true });
+    return res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Idempotente: se a instancia ja esta desconectada, tratamos como sucesso
+    const evoMsg = JSON.stringify(e.response?.data || '');
+    if (e.response?.status === 400 && /not connected|already/i.test(evoMsg)) {
+      return res.json({ ok: true, alreadyDisconnected: true });
+    }
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
   }
 };
 
@@ -72,7 +77,8 @@ const reiniciar = async (req, res) => {
     await evo.post(`/instance/restart/${instancia}`);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Erro real da Evolution chega como response.data — propaga para diagnostico
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
   }
 };
 
