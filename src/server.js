@@ -19,6 +19,8 @@ async function start() {
     await sequelize.query(`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS data_entrada TIMESTAMPTZ DEFAULT NOW()`);
     await sequelize.query(`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS ia_ativa BOOLEAN DEFAULT true`);
     await sequelize.query(`CREATE UNIQUE INDEX IF NOT EXISTS clientes_empresa_phone_idx ON clientes(empresa_id, phone)`);
+    // Remove constraint UNIQUE legada que era apenas em phone — multi-tenant exige o mesmo phone em empresas diferentes
+    await sequelize.query(`ALTER TABLE clientes DROP CONSTRAINT IF EXISTS clientes_phone_key`);
     await sequelize.query(`
       UPDATE clientes SET empresa_id = (SELECT id FROM empresas WHERE slug = 'america-peptideos' LIMIT 1)
       WHERE empresa_id IS NULL

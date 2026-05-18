@@ -49,6 +49,8 @@ app.get('/api/migrate', async (req, res) => {
   await q('ALTER TABLE clientes ADD COLUMN IF NOT EXISTS resumo_conversa TEXT');
   await q('ALTER TABLE clientes ADD COLUMN IF NOT EXISTS data_entrada TIMESTAMPTZ DEFAULT NOW()');
   await q('CREATE UNIQUE INDEX IF NOT EXISTS clientes_empresa_phone_idx ON clientes(empresa_id, phone)');
+  // Multi-tenant: phone unico apenas por empresa (constraint legada era so em phone)
+  await q('ALTER TABLE clientes DROP CONSTRAINT IF EXISTS clientes_phone_key', 'drop:clientes_phone_key');
   // Colunas legadas do Chatwoot tinham NOT NULL — remover para compatibilidade
   await q('ALTER TABLE mensagens ALTER COLUMN phone DROP NOT NULL');
   await q('ALTER TABLE mensagens ALTER COLUMN role DROP NOT NULL');
