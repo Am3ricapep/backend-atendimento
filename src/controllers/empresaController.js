@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { Empresa, Cliente } = require('../models');
+const { PROMPT_PADRAO } = require('../lib/promptPadrao');
 
 const EVO_URL = process.env.EVOLUTION_URL;
 const EVO_KEY = process.env.EVOLUTION_KEY;
@@ -61,6 +62,7 @@ const criar = async (req, res) => {
       ...req.body,
       evolution_instance: req.body.evolution_instance || req.body.slug,
       n8n_workflow_id:    req.body.n8n_workflow_id    || N8N_WORKFLOW_ID,
+      prompt:             req.body.prompt             || PROMPT_PADRAO,
     };
     const empresa = await Empresa.create(body);
     await criarInstanciaEvo(empresa.slug);
@@ -149,15 +151,8 @@ const deletarCliente = async (req, res) => {
     const cliente = await Cliente.findOne({ where: { id: req.params.clienteId, empresa_id: empresa.id } });
     if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
 
-    const { Mensagem, sequelize } = require('../models');
+    const { Mensagem } = require('../models');
     await Mensagem.destroy({ where: { cliente_id: cliente.id } });
-    // Apaga contexto da memória da IA (tabela criada pelo nó Memória Postgres do n8n v3)
-    if (cliente.phone) {
-      await sequelize.query(
-        'DELETE FROM chat_memories WHERE id = :phone',
-        { replacements: { phone: cliente.phone } }
-      ).catch(() => {}); // silencioso se tabela não existir
-    }
     await cliente.destroy();
 
     res.json({ ok: true });

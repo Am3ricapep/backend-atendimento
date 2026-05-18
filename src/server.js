@@ -76,6 +76,20 @@ async function start() {
     await sequelize.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS script_venda TEXT`);
     // mensagens — evolution_msg para mídia
     await sequelize.query(`ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS evolution_msg TEXT`);
+
+    // Backfill: empresas sem prompt recebem o template padrão (com placeholders {{atendente}} e {{empresa_nome}})
+    const { PROMPT_PADRAO } = require('./lib/promptPadrao');
+    const [empresasSemPrompt] = await sequelize.query(
+      `SELECT id FROM empresas WHERE prompt IS NULL OR prompt = ''`
+    );
+    if (empresasSemPrompt.length > 0) {
+      await sequelize.query(
+        `UPDATE empresas SET prompt = :prompt WHERE prompt IS NULL OR prompt = ''`,
+        { replacements: { prompt: PROMPT_PADRAO } }
+      );
+      console.log(`Backfill prompt: ${empresasSemPrompt.length} empresas atualizadas`);
+    }
+
     console.log('Postgres conectado e migrações aplicadas');
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
   } catch (e) {

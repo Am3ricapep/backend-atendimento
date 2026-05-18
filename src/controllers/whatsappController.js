@@ -22,8 +22,11 @@ const qr = async (req, res) => {
   try {
     const { instancia } = req.params;
     const { data } = await evo.get(`/instance/connect/${instancia}`);
-    const base64 = data?.base64 || data?.qrcode?.base64 || null;
-    res.json({ qrcode: base64 ? `data:image/png;base64,${base64}` : null });
+    const raw = data?.base64 || data?.qrcode?.base64 || null;
+    const qrcode = raw
+      ? (raw.startsWith('data:') ? raw : `data:image/png;base64,${raw}`)
+      : null;
+    res.json({ qrcode });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
