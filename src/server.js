@@ -150,6 +150,42 @@ async function start() {
       console.log(`[${MIG}] aplicada`);
     }
 
+    // Migration v2: UPDATE seed (dose + protocolo + scripts sem em-dash) na America e Imperio
+    // UPDATE por nome preserva ID, criado_em e qualquer edicao feita pela dashboard em outros campos
+    const MIG_V2 = 'produtos_seed_v2_dose_protocolo_sem_emdash_2026_05_18';
+    const [v2Rodou] = await sequelize.query(
+      `SELECT 1 FROM _migrations WHERE nome = :nome`,
+      { replacements: { nome: MIG_V2 } }
+    );
+    if (v2Rodou.length === 0) {
+      const [alvosV2] = await sequelize.query(
+        `SELECT id, slug FROM empresas WHERE slug IN (:slugs)`,
+        { replacements: { slugs: ['america-peptideos', 'imperio'] } }
+      );
+      let totalAtualizados = 0;
+      for (const emp of alvosV2) {
+        for (const p of PRODUTOS_PADRAO) {
+          const [, meta] = await sequelize.query(
+            `UPDATE produtos SET
+               indicacao = :indicacao, preco = :preco, preco_de = :preco_de,
+               dose = :dose, protocolo = :protocolo, stack = :stack,
+               upsell = :upsell, script_venda = :script_venda
+             WHERE empresa_id = :empresa_id AND nome = :nome`,
+            { replacements: {
+              indicacao: p.indicacao, preco: p.preco, preco_de: p.preco_de,
+              dose: p.dose, protocolo: p.protocolo, stack: p.stack,
+              upsell: p.upsell, script_venda: p.script_venda,
+              empresa_id: emp.id, nome: p.nome
+            }}
+          );
+          totalAtualizados += meta?.rowCount ?? 0;
+        }
+        console.log(`[${MIG_V2}] ${emp.slug}: produtos atualizados (dose + protocolo + scripts limpos)`);
+      }
+      await sequelize.query(`INSERT INTO _migrations (nome) VALUES (:nome)`, { replacements: { nome: MIG_V2 } });
+      console.log(`[${MIG_V2}] aplicada — ${totalAtualizados} linhas atualizadas`);
+    }
+
     console.log('Postgres conectado e migrações aplicadas');
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
   } catch (e) {
