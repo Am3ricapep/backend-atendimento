@@ -70,6 +70,12 @@ async function start() {
         ordem      INTEGER DEFAULT 0
       )
     `);
+    // empresas — multi-tenant
+    await sequelize.query(`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS prompt TEXT`);
+    // produtos — script de venda por produto
+    await sequelize.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS script_venda TEXT`);
+    // mensagens — evolution_msg para mídia
+    await sequelize.query(`ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS evolution_msg TEXT`);
     console.log('Postgres conectado e migrações aplicadas');
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
   } catch (e) {

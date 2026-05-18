@@ -11,8 +11,9 @@ const Produto = sequelize.define('Produto', {
   dose:       { type: DataTypes.TEXT },
   protocolo:  { type: DataTypes.TEXT },
   stack:      { type: DataTypes.TEXT },
-  upsell:     { type: DataTypes.TEXT },
-  ativo:      { type: DataTypes.BOOLEAN, defaultValue: true },
+  upsell:       { type: DataTypes.TEXT },
+  script_venda: { type: DataTypes.TEXT },
+  ativo:        { type: DataTypes.BOOLEAN, defaultValue: true },
   ordem:      { type: DataTypes.INTEGER, defaultValue: 0 }
 }, {
   tableName: 'produtos',

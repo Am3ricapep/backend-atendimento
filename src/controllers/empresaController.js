@@ -4,6 +4,8 @@ const { Empresa, Cliente } = require('../models');
 const EVO_URL = process.env.EVOLUTION_URL;
 const EVO_KEY = process.env.EVOLUTION_KEY;
 
+const N8N_WEBHOOK_URL = 'https://ia-atendimento-n8n.szzpop.easypanel.host/webhook/evolution-webhook';
+
 async function criarInstanciaEvo(slug) {
   try {
     await axios.post(`${EVO_URL}/instance/create`,
@@ -11,6 +13,19 @@ async function criarInstanciaEvo(slug) {
       { headers: { apikey: EVO_KEY } }
     );
   } catch {} // ignora se já existe
+
+  // Configura webhook apontando para o n8n
+  try {
+    await axios.post(`${EVO_URL}/webhook/set/${slug}`,
+      {
+        url: N8N_WEBHOOK_URL,
+        webhook_by_events: false,
+        webhook_base64: false,
+        events: ['MESSAGES_UPSERT'],
+      },
+      { headers: { apikey: EVO_KEY } }
+    );
+  } catch {} // ignora se instância ainda não está pronta
 }
 
 const isAdmin = (req) => req.empresa.role === 'admin';
@@ -37,10 +52,17 @@ const buscar = async (req, res) => {
   }
 };
 
+const N8N_WORKFLOW_ID = '1GNR61bxHJJhyvqp';
+
 const criar = async (req, res) => {
   try {
     if (!isAdmin(req)) return res.status(403).json({ error: 'Apenas admin pode criar empresas' });
-    const empresa = await Empresa.create(req.body);
+    const body = {
+      ...req.body,
+      evolution_instance: req.body.evolution_instance || req.body.slug,
+      n8n_workflow_id:    req.body.n8n_workflow_id    || N8N_WORKFLOW_ID,
+    };
+    const empresa = await Empresa.create(body);
     await criarInstanciaEvo(empresa.slug);
     res.status(201).json(empresa);
   } catch (e) {
@@ -127,8 +149,15 @@ const deletarCliente = async (req, res) => {
     const cliente = await Cliente.findOne({ where: { id: req.params.clienteId, empresa_id: empresa.id } });
     if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
 
-    const { Mensagem } = require('../models');
+    const { Mensagem, sequelize } = require('../models');
     await Mensagem.destroy({ where: { cliente_id: cliente.id } });
+    // Apaga contexto da memória da IA (tabela criada pelo nó Memória Postgres do n8n v3)
+    if (cliente.phone) {
+      await sequelize.query(
+        'DELETE FROM chat_memories WHERE id = :phone',
+        { replacements: { phone: cliente.phone } }
+      ).catch(() => {}); // silencioso se tabela não existir
+    }
     await cliente.destroy();
 
     res.json({ ok: true });

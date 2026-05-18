@@ -14,6 +14,7 @@ const Empresa = sequelize.define('Empresa', {
   n8n_workflow_id:    { type: DataTypes.TEXT },
   sheets_id:          { type: DataTypes.TEXT },
   pg_schema:          { type: DataTypes.TEXT },
+  prompt:             { type: DataTypes.TEXT },
   ativo:              { type: DataTypes.BOOLEAN, defaultValue: true },
   criado_em:          { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
 }, {
