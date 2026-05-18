@@ -9,6 +9,7 @@ const whatsappRoutes   = require('./routes/whatsapp');
 const atendenteRoutes  = require('./routes/atendentes');
 const produtoRoutes    = require('./routes/produtos');
 const mensagemRoutes   = require('./routes/mensagens');
+const provaRoutes      = require('./routes/provas');
 
 const app = express();
 
@@ -90,6 +91,8 @@ app.use('/api/auth',                              authRoutes);
 app.use('/api/empresas',                          empresasRoutes);
 app.use('/api/empresas/:empresaId/atendentes',    atendenteRoutes);
 app.use('/api/empresas/:empresaId/produtos',      produtoRoutes);
+app.use('/api/empresas/:empresaId/provas',        provaRoutes);
+app.use('/api/empresas/slug/:slug/provas',        provaRoutes);
 app.use('/api/conversas',                         conversasRoutes);
 app.use('/api/mensagens',                         mensagemRoutes);
 app.use('/api/whatsapp',                          whatsappRoutes);

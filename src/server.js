@@ -79,6 +79,25 @@ async function start() {
     // mensagens — evolution_msg para mídia
     await sequelize.query(`ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS evolution_msg TEXT`);
 
+    // provas — provas sociais e certificados (Cloudinary)
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS provas (
+        id                       SERIAL PRIMARY KEY,
+        empresa_id               INTEGER NOT NULL,
+        tipo                     TEXT NOT NULL,
+        produto_id               INTEGER,
+        titulo                   TEXT NOT NULL,
+        descricao                TEXT,
+        cloudinary_public_id     TEXT NOT NULL,
+        cloudinary_url           TEXT NOT NULL,
+        cloudinary_resource_type TEXT NOT NULL,
+        ativo                    BOOLEAN DEFAULT true,
+        criado_em                TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS provas_empresa_id_idx ON provas(empresa_id)`);
+    await sequelize.query(`CREATE INDEX IF NOT EXISTS provas_produto_id_idx ON provas(produto_id)`);
+
     // Backfill: empresas sem prompt recebem o template padrão (com placeholders {{atendente}} e {{empresa_nome}})
     const { PROMPT_PADRAO } = require('./lib/promptPadrao');
     const [empresasSemPrompt] = await sequelize.query(
