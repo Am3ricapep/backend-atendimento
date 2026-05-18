@@ -109,6 +109,47 @@ async function start() {
       }
     }
 
+    // Tabela de controle pra migrations one-shot (idempotente entre restarts)
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS _migrations (
+        nome        TEXT PRIMARY KEY,
+        aplicada_em TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Migration one-shot: reseta produtos da América e Imperio pra seed atual
+    // Faz backup em produtos_backup_pre_seed_v1 antes de apagar (recuperável se necessário)
+    const MIG = 'produtos_seed_v1_america_imperio_2026_05_18';
+    const [jaRodou] = await sequelize.query(
+      `SELECT 1 FROM _migrations WHERE nome = :nome`,
+      { replacements: { nome: MIG } }
+    );
+    if (jaRodou.length === 0) {
+      const slugsReset = ['america-peptideos', 'imperio'];
+      const [alvos] = await sequelize.query(
+        `SELECT id, slug FROM empresas WHERE slug IN (:slugs)`,
+        { replacements: { slugs: slugsReset } }
+      );
+      if (alvos.length > 0) {
+        // Backup defensivo (cria tabela se não existir)
+        await sequelize.query(`CREATE TABLE IF NOT EXISTS produtos_backup_pre_seed_v1 (LIKE produtos)`);
+        await sequelize.query(
+          `INSERT INTO produtos_backup_pre_seed_v1
+           SELECT * FROM produtos WHERE empresa_id IN (:ids)`,
+          { replacements: { ids: alvos.map(a => a.id) } }
+        );
+        // Reset
+        for (const emp of alvos) {
+          await sequelize.query(`DELETE FROM produtos WHERE empresa_id = :id`, { replacements: { id: emp.id } });
+          const dados = PRODUTOS_PADRAO.map(p => ({ ...p, empresa_id: emp.id, ativo: true }));
+          await Produto.bulkCreate(dados);
+          console.log(`[${MIG}] ${emp.slug}: produtos resetados (${dados.length} produtos da seed)`);
+        }
+      }
+      await sequelize.query(`INSERT INTO _migrations (nome) VALUES (:nome)`, { replacements: { nome: MIG } });
+      console.log(`[${MIG}] aplicada`);
+    }
+
     console.log('Postgres conectado e migrações aplicadas');
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
   } catch (e) {
