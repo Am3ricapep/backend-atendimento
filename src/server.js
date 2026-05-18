@@ -235,6 +235,23 @@ async function start() {
       console.log(`[${MIG_V3}] aplicada`);
     }
 
+    // Migration v4: atualiza prompt da America e Imperio com nova versao (regra de nao citar preco)
+    const MIG_V4 = 'prompt_v2_sem_preco_espontaneo_2026_05_18';
+    const [v4Rodou] = await sequelize.query(
+      `SELECT 1 FROM _migrations WHERE nome = :nome`,
+      { replacements: { nome: MIG_V4 } }
+    );
+    if (v4Rodou.length === 0) {
+      const [, meta] = await sequelize.query(
+        `UPDATE empresas SET prompt = :prompt
+         WHERE LOWER(slug) IN ('america-peptideos', 'imperio')`,
+        { replacements: { prompt: PROMPT_PADRAO } }
+      );
+      const updated = meta?.rowCount ?? 0;
+      await sequelize.query(`INSERT INTO _migrations (nome) VALUES (:nome)`, { replacements: { nome: MIG_V4 } });
+      console.log(`[${MIG_V4}] aplicada, ${updated} empresas com novo prompt`);
+    }
+
     console.log('Postgres conectado e migrações aplicadas');
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
   } catch (e) {
